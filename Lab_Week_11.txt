@@ -1,0 +1,69 @@
+LAB WEEK 11 - ASSIGNMENT
+Part 3 – FileProvider & MediaStore
+
+
+1. Ketika user mengambil foto, bagian kode mana yang menyimpan file tersebut ke MediaStore?
+   Berikut adalah potongan kode yang menangani proses penyimpanan file ke MediaStore:
+
+   -------------------------------------------------------------------------
+   private fun insertToStore(
+       fileInfo: FileInfo,
+       contentUri: Uri,
+       contentValues: ContentValues
+   ) {
+       executor.execute {
+           val insertedUri = contentResolver.insert(contentUri, contentValues)
+           insertedUri?.let {
+               val inputStream = contentResolver.openInputStream(fileInfo.uri)
+               val outputStream = contentResolver.openOutputStream(insertedUri)
+               IOUtils.copy(inputStream, outputStream)
+           }
+       }
+   }
+   -------------------------------------------------------------------------
+
+   Kode di atas menyalin file dari URI FileProvider ke penyimpanan MediaStore,
+   sehingga file dapat muncul di aplikasi Gallery.
+
+
+2. Pada file FileInfo.kt terdapat 5 atribut:
+   - Apa yang dimaksud dengan atribut pertama `uri`?
+   - Apa yang dimaksud dengan atribut keempat `relativePath`?
+
+   Jawaban:
+   - `uri` adalah URI sementara yang dibuat oleh FileProvider untuk memberi
+     akses terbatas ke file yang baru dibuat (foto/video). URI inilah yang
+     dipakai kamera untuk menulis hasil foto/video ke file.
+
+   - `relativePath` adalah lokasi folder tempat file tersebut akan disimpan
+     di MediaStore. Contohnya:
+         Environment.DIRECTORY_PICTURES
+         Environment.DIRECTORY_MOVIES
+     MediaStore menggunakan path ini untuk menentukan folder tujuan ketika
+     file dicopy ke penyimpanan external public (Gallery).
+
+
+3. Bonus: Jelaskan alur proses ketika user mengambil gambar hingga file muncul di MediaStore.
+
+   Langkah-langkah lengkapnya:
+
+   1. User menekan tombol "Photo" di aplikasi.
+   2. Aplikasi mengecek permission WRITE_EXTERNAL_STORAGE (Android 9 ke bawah).
+   3. Jika permission diizinkan, aplikasi memanggil `generatePhotoUri()`
+      yang membuat FileInfo berisi:
+      - file kosong untuk menampung hasil foto
+      - nama file (misal: img_1234.jpg)
+      - URI FileProvider untuk kamera menulis file
+   4. Aplikasi memanggil `takePictureLauncher.launch(uri)` dengan URI file.
+   5. Kamera dibuka dan hasil foto ditulis ke URI tersebut.
+   6. Setelah kamera selesai, callback ActivityResultContracts.TakePicture()
+      dipanggil dan aplikasi memanggil `insertImageToStore(photoInfo)`.
+   7. `insertToStore()` menyalin file dari lokasi FileProvider ke MediaStore
+      dengan menggunakan inputStream + outputStream.
+   8. MediaStore menyimpan file di folder sesuai relativePath, misalnya:
+         Pictures/
+         Movies/
+   9. File kini tersedia untuk aplikasi Gallery dan aplikasi lain.
+
+
+SELESAI.
